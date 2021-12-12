@@ -10,6 +10,7 @@ const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const findOrCreate = require("mongoose-findorcreate");
+const GitHubStrategy = require('passport-github').Strategy;
 
 const app = express();
 
@@ -70,6 +71,19 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/github/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOrCreate({ githubId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
+
 app.get("/", function(req,res) {
   res.render("home");
 });
@@ -82,6 +96,16 @@ app.get("/auth/google/secrets",
   passport.authenticate('google', { failureRedirect: '/login' }),
   function(req, res) {
     // Successful authentication, redirect secrets.
+    res.redirect('/secrets');
+  });
+
+app.get('/auth/github',
+  passport.authenticate('github'));
+
+app.get('/auth/github/secrets',
+  passport.authenticate('github', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
     res.redirect('/secrets');
   });
 
